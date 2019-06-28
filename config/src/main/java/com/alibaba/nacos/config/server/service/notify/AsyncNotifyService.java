@@ -16,11 +16,14 @@
 package com.alibaba.nacos.config.server.service.notify;
 
 import com.alibaba.nacos.config.server.constant.Constants;
-import com.alibaba.nacos.config.server.service.ConfigDataChangeEvent;
 import com.alibaba.nacos.config.server.monitor.MetricsMonitor;
+import com.alibaba.nacos.config.server.service.ConfigDataChangeEvent;
 import com.alibaba.nacos.config.server.service.ServerListService;
 import com.alibaba.nacos.config.server.service.trace.ConfigTraceService;
-import com.alibaba.nacos.config.server.utils.*;
+import com.alibaba.nacos.config.server.utils.LogUtil;
+import com.alibaba.nacos.config.server.utils.PropertyUtil;
+import com.alibaba.nacos.config.server.utils.RunningConfigUtils;
+import com.alibaba.nacos.config.server.utils.StringUtils;
 import com.alibaba.nacos.config.server.utils.event.EventDispatcher.AbstractEventListener;
 import com.alibaba.nacos.config.server.utils.event.EventDispatcher.Event;
 import org.apache.http.HttpResponse;
@@ -183,10 +186,8 @@ public class AsyncNotifyService extends AbstractEventListener {
                     ConfigTraceService.NOTIFY_EVENT_OK, delayed,
                     task.target);
             } else {
-                log.error("[notify-error] {}, {}, to {}, result {}",
-                    new Object[] {task.getDataId(), task.getGroup(),
-                        task.target,
-                        response.getStatusLine().getStatusCode()});
+                log.error("[notify-error] target:{} dataId:{} group:{} ts:{} code:{}",
+                    task.target, task.getDataId(), task.getGroup(), task.getLastModified(), response.getStatusLine().getStatusCode());
                 ConfigTraceService.logNotifyEvent(task.getDataId(),
                     task.getGroup(), task.getTenant(), null, task.getLastModified(),
                     LOCAL_IP,
@@ -205,9 +206,8 @@ public class AsyncNotifyService extends AbstractEventListener {
                 ((ScheduledThreadPoolExecutor)EXCUTOR).schedule(asyncTask, delay, TimeUnit.MILLISECONDS);
 
                 LogUtil.notifyLog.error(
-                    "[notify-retry] target:{} dataid:{} group:{} ts:{}",
-                    new Object[] {task.target, task.getDataId(),
-                        task.getGroup(), task.getLastModified()});
+                    "[notify-retry] target:{} dataId:{} group:{} ts:{}",
+                    task.target, task.getDataId(), task.getGroup(), task.getLastModified());
 
                 MetricsMonitor.getConfigNotifyException().increment();
             }
@@ -218,10 +218,8 @@ public class AsyncNotifyService extends AbstractEventListener {
         public void failed(Exception ex) {
 
             long delayed = System.currentTimeMillis() - task.getLastModified();
-            log.error("[notify-exception] " + task.getDataId() + ", " + task.getGroup() + ", to " + task.target + ", "
-                + ex.toString());
-            log.debug("[notify-exception] " + task.getDataId() + ", " + task.getGroup() + ", to " + task.target + ", "
-                + ex.toString(), ex);
+            log.error("[notify-exception] target:{} dataId:{} group:{} ts:{} ex:{}",
+                task.target, task.getDataId(), task.getGroup(), task.getLastModified(), ex.toString());
             ConfigTraceService.logNotifyEvent(task.getDataId(),
                 task.getGroup(), task.getTenant(), null, task.getLastModified(),
                 LOCAL_IP,
@@ -237,9 +235,8 @@ public class AsyncNotifyService extends AbstractEventListener {
 
             ((ScheduledThreadPoolExecutor)EXCUTOR).schedule(asyncTask, delay, TimeUnit.MILLISECONDS);
             LogUtil.notifyLog.error(
-                "[notify-retry] target:{} dataid:{} group:{} ts:{}",
-                new Object[] {task.target, task.getDataId(),
-                    task.getGroup(), task.getLastModified()});
+                "[notify-retry] target:{} dataId:{} group:{} ts:{}",
+                task.target, task.getDataId(), task.getGroup(), task.getLastModified());
 
             MetricsMonitor.getConfigNotifyException().increment();
         }
@@ -248,10 +245,8 @@ public class AsyncNotifyService extends AbstractEventListener {
         public void cancelled() {
 
             LogUtil.notifyLog.error(
-                "[notify-exception] target:{} dataid:{} group:{} ts:{}",
-                new Object[] {task.target, task.getGroup(),
-                    task.getGroup(), task.getLastModified()},
-                "CANCELED");
+                "[notify-exception] target:{} dataId:{} group:{} ts:{} method:{}",
+                task.target, task.getDataId(), task.getGroup(), task.getLastModified(), "CANCELED");
 
             //get delay time and set fail count to the task
             int delay = getDelayTime(task);
@@ -262,9 +257,8 @@ public class AsyncNotifyService extends AbstractEventListener {
 
             ((ScheduledThreadPoolExecutor)EXCUTOR).schedule(asyncTask, delay, TimeUnit.MILLISECONDS);
             LogUtil.notifyLog.error(
-                "[notify-retry] target:{} dataid:{} group:{} ts:{}",
-                new Object[] {task.target, task.getDataId(),
-                    task.getGroup(), task.getLastModified()});
+                "[notify-retry] target:{} dataId:{} group:{} ts:{}",
+                task.target, task.getDataId(), task.getGroup(), task.getLastModified());
 
             MetricsMonitor.getConfigNotifyException().increment();
         }
